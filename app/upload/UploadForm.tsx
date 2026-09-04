@@ -251,7 +251,6 @@ export default function UploadForm() {
             ref={fileInputRef}
             type="file"
             accept={config.accept}
-            capture={config.capture}
             onChange={handleFileChange}
             className="hidden"
             id="file-input"
