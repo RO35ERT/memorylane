@@ -1,0 +1,52 @@
+Project Specification: Two-Person Private Memory Lane Web Application
+1. Executive Summary & Core Objective
+This document outlines the technical specification and deployment blueprint for a hyper-private, two-person memory lane web application. The platform serves as a shared digital time capsule for photos, videos, audio voice memos, and text notes. Designed with a dark luxury, minimalist aesthetic to feel deeply intimate and visually captivating, the app relies entirely on serverless architecture, a Next.js frontend deployed on Vercel, and Google Drive as a zero-cost, infinitely portable file system.
+2. System Architecture & Tech Stack
+Frontend & Backend Framework: Next.js (App Router) combining React components and serverless API routes.
+Hosting Platform: Vercel (Free Hobby Tier) for instant, global static and serverless deployment.
+Authentication: NextAuth.js configured with Google OAuth, strictly gated by a hardcoded email whitelist containing only two authorized users.
+Data & Media Storage: Google Drive API acting as a remote file bucket. All photos, videos, audio recordings, and text notes live directly inside a dedicated, isolated Google Drive folder structure. No external database is required.
+3. User Authentication & Security Layer
+To ensure absolute privacy where even unauthorized logins cannot breach the data:
+Layer 1 (Email Whitelist Gate): Users must log in via Google OAuth. The NextAuth callback checks the authenticated email against an environment variable array (ALLOWED_EMAILS=["you@gmail.com", "gf@gmail.com"]). Unauthorized emails are immediately rejected.
+Layer 2 (Isolated Drive Credentials): The Next.js serverless backend communicates with Google Drive using a dedicated Service Account or permanent OAuth token scoped solely to the memory folder. The frontend has zero direct access to Google Drive keys.
+4. File-Based Data Schema & Organization
+Google Drive structure mirrors the application's timeline and chapters:
+/Our-Memory-Lane-Root/
+  ├── 2026-06_Our_First_Trip/
+  │   ├── photo_12345.jpg
+  │   ├── video_67890.mp4
+  │   ├── voice_note_01.webm
+  │   └── note_abc123.txt  (Hidden metadata footer pattern)
+  └── 2026-09_Anniversary/
+      ├── photo_99887.png
+      └── note_xyz789.txt
+
+
+Text & Metadata Handling: Text entries are saved as raw .txt files containing a hidden final line for metadata (e.g., exact timestamps or author tags) which the app parses and strips before rendering clean typography.
+5. UI/UX Aesthetic Guidelines ("Catchy & Perfect")
+To move away from standard corporate web styling and achieve an immersive, emotionally resonant design:
+Visual Theme: Dark luxury aesthetic—deep charcoal/black backgrounds (#0a0a0a), soft ambient glows, subtle frosted glass cards (backdrop blur), and warm metallic or soft rose accents.
+Typography: Clean serif headings paired with highly legible sans-serif body text for a journal-like reading experience.
+Layout: A fluid, immersive timeline stream with masonry photo grids, custom-styled audio players, and smooth cinematic transitions for video playback.
+6. Step-by-Step Deployment Blueprint
+Phase
+Task Description
+Key Action Items
+ 
+Phase 1
+Google Cloud Console Setup
+Create a project, enable the Google Drive API, generate OAuth credentials, and establish a dedicated shared folder.
+Phase 2
+Next.js Application Core
+Initialize Next.js repository, configure NextAuth with the two-email whitelist, and build the Drive API wrapper service.
+Phase 3
+UI Implementation
+Craft the dark luxury layout, timeline feed, media upload components, and inline audio/video players using Tailwind CSS.
+Phase 4
+Vercel Deployment
+Push repository to GitHub, link project to Vercel, configure environment variables, and push live.
+
+7. Future Expansion Ideas
+"On This Day" Resurface Banner: Automatically surface memories from previous years on the current calendar date.
+Companion Comment Files: Generate lightweight .comment.txt files linked to media IDs to support reply threads without a database.
