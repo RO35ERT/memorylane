@@ -10,7 +10,7 @@ export default async function Home() {
       setTimeout(() => reject(new Error("auth() hung for more than 3 seconds!")), 3000)
     )
     
-    const session = await Promise.race([authPromise, timeoutPromise])
+    const session: any = await Promise.race([authPromise, timeoutPromise])
     authResult = session ? `✅ Logged in as ${session.user?.name}` : "✅ Not logged in (auth finished successfully)"
   } catch (err) {
     authResult = `❌ ERROR: ${err instanceof Error ? err.message : String(err)}`
