@@ -6,7 +6,12 @@ export const getDriveClient = (accessToken: string) => {
     process.env.AUTH_GOOGLE_SECRET,
   );
   oauth2Client.setCredentials({ access_token: accessToken });
-  return google.drive({ version: "v3", auth: oauth2Client });
+  return google.drive({ 
+    version: "v3", 
+    auth: oauth2Client,
+    // Prevent infinite hangs on deployment by setting a 10s timeout
+    timeout: 10000 
+  });
 };
 
 export type DriveFile = {
