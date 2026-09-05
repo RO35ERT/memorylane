@@ -73,16 +73,46 @@ function MediaItem({ file }: { file: { id: string; name: string; mimeType: strin
 }
 
 export default async function Home() {
-  const session = await auth()
+  // const session = await auth()
+  // if (!session) {
+  //   redirect("/auth/signin")
+  // }
 
-  if (!session) {
-    redirect("/auth/signin")
-  }
-
+  // --- MOCK DATA FOR VERCEL DEBUGGING ---
+  // We are commenting out the real Google Drive fetch to test if the Vercel connection issue is API-related.
+  
+  /*
   const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
   const chapters = rootFolderId && session.accessToken
     ? await listChapters(session.accessToken, rootFolderId).catch(() => [])
     : []
+  */
+
+  const chapters = [
+    {
+      folderName: "2026-09",
+      files: [
+        {
+          id: "mock-1",
+          name: "mock-photo.jpg",
+          mimeType: "image/jpeg",
+          createdTime: new Date().toISOString(),
+        }
+      ]
+    },
+    {
+      folderName: "2026-08",
+      files: [
+        {
+          id: "mock-2",
+          name: "mock-video.mp4",
+          mimeType: "video/mp4",
+          createdTime: new Date(Date.now() - 86400000 * 30).toISOString(),
+        }
+      ]
+    }
+  ]
+  // --------------------------------------
 
   // Flatten and sort files by creation time
   const allItems = chapters
@@ -121,8 +151,8 @@ export default async function Home() {
         {/* User bar */}
         <section className="glass-panel px-5 py-4 flex items-center justify-between">
           <div className="space-y-0.5">
-            <p className="text-sm font-medium">{session!.user?.name || "Love"}</p>
-            <SignOutButton />
+            <p className="text-sm font-medium">Guest (Auth Disabled)</p>
+            {/* <SignOutButton /> */}
           </div>
           <Link
             href="/upload"
