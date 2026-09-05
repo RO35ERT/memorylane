@@ -74,8 +74,11 @@ function MediaItem({ file }: { file: { id: string; name: string; mimeType: strin
 
 export default async function Home() {
   const session = await auth()
-  // Note: unauthenticated redirect is handled by middleware.ts
-  if (!session) return null
+
+  if (!session) {
+    redirect("/auth/signin")
+  }
+
   const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
   const chapters = rootFolderId && session.accessToken
     ? await listChapters(session.accessToken, rootFolderId).catch(() => [])

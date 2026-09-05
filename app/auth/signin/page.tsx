@@ -1,7 +1,9 @@
-import { signIn } from "@/lib/auth"
+import { signIn, auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
 
 export default async function SignInPage() {
-  // Redirect logic is handled by middleware.ts — no auth() check needed here
+  const session = await auth()
+  if (session) redirect("/")
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#ededed] flex items-center justify-center p-4">
