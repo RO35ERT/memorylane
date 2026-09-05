@@ -41,8 +41,8 @@ const TYPE_CONFIG: Record<MemoryType, {
 export default function UploadForm() {
   const router = useRouter()
   const [type, setType] = useState<MemoryType>("photo")
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [files, setFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
   const [note, setNote] = useState("")
   const [yearMonth, setYearMonth] = useState(new Date().toISOString().slice(0, 7))
   const [status, setStatus] = useState<Status>("idle")
@@ -56,8 +56,8 @@ export default function UploadForm() {
 
   const handleTypeChange = (t: MemoryType) => {
     setType(t)
-    setFile(null)
-    setPreview(null)
+    setFiles([])
+    setPreviews([])
     setNote("")
     setStatus("idle")
     setErrorMsg("")
@@ -81,7 +81,7 @@ export default function UploadForm() {
       mediaRecorder.addEventListener("stop", () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" })
         const audioFile = new File([audioBlob], `voice_memo_${Date.now()}.webm`, { type: "audio/webm" })
-        setFile(audioFile)
+        setFiles([audioFile])
         stream.getTracks().forEach((track) => track.stop())
         setIsRecording(false)
       })
@@ -100,21 +100,24 @@ export default function UploadForm() {
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0]
-    if (!selected) return
-    setFile(selected)
+    const selected = Array.from(e.target.files || [])
+    if (selected.length === 0) return
+    setFiles(selected)
     setStatus("idle")
     setErrorMsg("")
-    if (selected.type.startsWith("image/") || selected.type.startsWith("video/")) {
-      setPreview(URL.createObjectURL(selected))
-    } else {
-      setPreview(null)
-    }
+    
+    const newPreviews = selected.map(f => {
+      if (f.type.startsWith("image/") || f.type.startsWith("video/")) {
+        return URL.createObjectURL(f)
+      }
+      return ""
+    })
+    setPreviews(newPreviews)
   }
 
   const clearFile = () => {
-    setFile(null)
-    setPreview(null)
+    setFiles([])
+    setPreviews([])
     setStatus("idle")
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
@@ -122,7 +125,7 @@ export default function UploadForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (type !== "text" && !file) {
+    if (type !== "text" && files.length === 0) {
       setErrorMsg("Please select a file first.")
       setStatus("error")
       return
@@ -142,9 +145,9 @@ export default function UploadForm() {
       if (type === "text") {
         // Create a .txt blob to send as file
         const blob = new Blob([note], { type: "text/plain" })
-        formData.append("file", blob, `note_${Date.now()}.txt`)
+        formData.append("files", blob, `note_${Date.now()}.txt`)
       } else {
-        formData.append("file", file!)
+        files.forEach(f => formData.append("files", f))
       }
 
       formData.append("caption", note)
@@ -218,30 +221,44 @@ export default function UploadForm() {
             File
           </label>
 
-          {preview && (
-            <div className="relative rounded-xl overflow-hidden bg-[#111]">
-              {type === "photo" && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={preview} alt="Preview" className="w-full max-h-72 object-cover" />
-              )}
-              {type === "video" && (
-                <video src={preview} controls className="w-full max-h-72 rounded-xl" />
-              )}
+          {previews.length > 0 && (
+            <div className="relative rounded-xl overflow-hidden bg-[#111] p-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
+                {previews.map((p, i) => (
+                  <div key={i} className="relative rounded-lg overflow-hidden aspect-square bg-[#1a1a1a]">
+                    {type === "photo" && p && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p} alt={`Preview ${i}`} className="w-full h-full object-cover" />
+                    )}
+                    {type === "video" && p && (
+                      <video src={p} className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={clearFile}
-                className="absolute top-2 right-2 bg-black/60 rounded-full p-1 text-white"
+                className="absolute top-3 right-3 bg-black/80 rounded-full p-1.5 text-white shadow-lg hover:bg-red-500 transition-colors z-10"
               >
                 <XIcon className="w-4 h-4" />
               </button>
             </div>
           )}
 
-          {type === "audio" && file && (
-            <div className="flex items-center gap-3 bg-[#111] rounded-xl p-4">
-              <MicIcon className="w-5 h-5 text-[#d4af37]" />
-              <span className="text-sm text-gray-300 truncate">{file.name}</span>
-              <button type="button" onClick={clearFile} className="ml-auto text-gray-500">
+          {type === "audio" && files.length > 0 && (
+            <div className="space-y-2 relative">
+              {files.map((f, i) => (
+                <div key={i} className="flex items-center gap-3 bg-[#111] rounded-xl p-4">
+                  <MicIcon className="w-5 h-5 text-[#d4af37]" />
+                  <span className="text-sm text-gray-300 truncate">{f.name}</span>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={clearFile}
+                className="absolute top-1/2 -translate-y-1/2 right-4 text-gray-500 hover:text-red-500 transition-colors"
+              >
                 <XIcon className="w-4 h-4" />
               </button>
             </div>
@@ -251,12 +268,13 @@ export default function UploadForm() {
             ref={fileInputRef}
             type="file"
             accept={config.accept}
+            multiple
             onChange={handleFileChange}
             className="hidden"
             id="file-input"
           />
 
-          {!file && !isRecording && (
+          {files.length === 0 && !isRecording && (
             <div className="flex gap-3">
               <label
                 htmlFor="file-input"

@@ -27,14 +27,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const formData = await req.formData();
-    const file = formData.get("file") as File | null;
+    const files = formData.getAll("files") as File[];
     const caption = (formData.get("caption") as string) || "";
     const yearMonth =
       (formData.get("yearMonth") as string) ||
       new Date().toISOString().slice(0, 7);
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided." }, { status: 400 });
+    if (!files || files.length === 0) {
+      return NextResponse.json({ error: "No files provided." }, { status: 400 });
     }
 
     const drive = getDriveClient(accessToken);
@@ -65,43 +65,49 @@ export async function POST(req: NextRequest) {
       folderId = created.data.id!;
     }
 
-    // 2. Upload the file into the chapter folder
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const uploadedFiles = [];
 
-    const uploaded = await drive.files.create({
-      requestBody: {
-        name: file.name,
-        parents: [folderId],
-      },
-      media: {
-        mimeType: file.type,
-        body: Readable.from(buffer),
-      },
-      fields: "id, name, mimeType, webViewLink",
-      supportsAllDrives: true,
-    });
+    // 2. Loop through all files and upload them
+    for (const file of files) {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-    // 3. If caption provided, save it as a companion .txt file
-    if (caption.trim()) {
-      const timestamp = new Date().toISOString();
-      const author = session.user?.email || "unknown";
-      const noteContent = `${caption}\n\n<!-- meta: ${timestamp} | ${author} -->`;
-
-      await drive.files.create({
+      const uploaded = await drive.files.create({
         requestBody: {
-          name: `note_${uploaded.data.id}.txt`,
+          name: file.name,
           parents: [folderId],
         },
         media: {
-          mimeType: "text/plain",
-          body: Readable.from(Buffer.from(noteContent, "utf-8")),
+          mimeType: file.type,
+          body: Readable.from(buffer),
         },
+        fields: "id, name, mimeType, webViewLink",
         supportsAllDrives: true,
       });
+
+      uploadedFiles.push(uploaded.data);
+
+      // 3. If caption provided, save it as a companion .txt file for each media file
+      if (caption.trim()) {
+        const timestamp = new Date().toISOString();
+        const author = session.user?.email || "unknown";
+        const noteContent = `${caption}\n\n<!-- meta: ${timestamp} | ${author} -->`;
+
+        await drive.files.create({
+          requestBody: {
+            name: `note_${uploaded.data.id}.txt`,
+            parents: [folderId],
+          },
+          media: {
+            mimeType: "text/plain",
+            body: Readable.from(Buffer.from(noteContent, "utf-8")),
+          },
+          supportsAllDrives: true,
+        });
+      }
     }
 
-    return NextResponse.json({ success: true, file: uploaded.data });
+    return NextResponse.json({ success: true, files: uploadedFiles });
   } catch (err) {
     console.error("[upload] Error:", err);
     return NextResponse.json(
