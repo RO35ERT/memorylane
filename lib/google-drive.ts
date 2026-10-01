@@ -9,8 +9,8 @@ export const getDriveClient = (accessToken: string) => {
   return google.drive({ 
     version: "v3", 
     auth: oauth2Client,
-    // Prevent infinite hangs on deployment by setting a 10s timeout
-    timeout: 10000 
+    // Set a 60s timeout for Drive operations
+    timeout: 60000 
   });
 };
 

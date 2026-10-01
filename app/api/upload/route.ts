@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { getDriveClient } from "@/lib/google-drive";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) {
@@ -28,12 +30,14 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const files = formData.getAll("files") as File[];
+    const singleFile = formData.get("file") as File | null;
+    const allFiles = files.length > 0 ? files : (singleFile ? [singleFile] : []);
     const caption = (formData.get("caption") as string) || "";
     const yearMonth =
       (formData.get("yearMonth") as string) ||
       new Date().toISOString().slice(0, 7);
 
-    if (!files || files.length === 0) {
+    if (!allFiles || allFiles.length === 0) {
       return NextResponse.json({ error: "No files provided." }, { status: 400 });
     }
 
@@ -68,7 +72,7 @@ export async function POST(req: NextRequest) {
     const uploadedFiles = [];
 
     // 2. Loop through all files and upload them
-    for (const file of files) {
+    for (const file of allFiles) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
@@ -78,7 +82,7 @@ export async function POST(req: NextRequest) {
           parents: [folderId],
         },
         media: {
-          mimeType: file.type,
+          mimeType: file.type || "application/octet-stream",
           body: Readable.from(buffer),
         },
         fields: "id, name, mimeType, webViewLink",
@@ -87,8 +91,8 @@ export async function POST(req: NextRequest) {
 
       uploadedFiles.push(uploaded.data);
 
-      // 3. If caption provided, save it as a companion .txt file for each media file
-      if (caption.trim()) {
+      // 3. If caption provided, save it as a companion .txt file (only for media files, not text notes)
+      if (caption.trim() && !file.name.startsWith("note_")) {
         const timestamp = new Date().toISOString();
         const author = session.user?.email || "unknown";
         const noteContent = `${caption}\n\n<!-- meta: ${timestamp} | ${author} -->`;
@@ -110,8 +114,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, files: uploadedFiles });
   } catch (err) {
     console.error("[upload] Error:", err);
+    const message = err instanceof Error ? err.message : "Upload failed. Check server logs.";
     return NextResponse.json(
-      { error: "Upload failed. Check server logs." },
+      { error: message },
       { status: 500 }
     );
   }
